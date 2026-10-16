@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pdf
+data/
+eval/results_*.txt
+groq_test.py
