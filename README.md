@@ -56,3 +56,10 @@ These are hand checks, not a benchmark.
 - English embedding model; Hinglish/Hindi questions have not been tested.
 - Cited pages are not automatically verified against the answer.
 - The retrieval eval counts a hit if any expected page is in the top 5, so it cannot detect incomplete answers.
+
+## Experiments that did not work
+- **Carrying the next page's head into a page's last chunk as well** (in addition to the previous page's tail): U1 eval hit@5 stayed 23/23 but hit@1 fell from 18/23 to 12/23. Text from page N+1 stored under page N's label pulled queries to chunks with the wrong page label (for example, a page 6 chunk started matching questions about the page 7 comparison). Reverted. Idea for later: keep chunk text clean and fetch the neighbouring chunk at retrieval time.
+- **Distance threshold for refusing questions:** not used. English unrelated questions start at about 0.53, a Hinglish unrelated question scored 0.43, and answerable questions go up to 0.46, so one number cannot separate them. Refusal is left to the LLM instruction.
+
+## Additional known limitation
+- A list that continues on the next page can still be answered incompletely when the next page's chunk is not retrieved (for example, 2 of 5 limitations of open-source AI were missing in one test).

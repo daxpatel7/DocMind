@@ -89,7 +89,6 @@ def prepare_chunks(file_name, pages, carry=300):
 
     return ids, documents, metadatas
 
-
 def build_collection(pdf_path, model=None):
     """
     Parse a PDF, chunk it, embed it, and return a fresh
