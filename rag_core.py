@@ -57,25 +57,35 @@ def remove_repeated_lines(pages, min_pages=4, ratio=0.5):
 
     return cleaned
 
-def prepare_chunks(file_name, pages):
+def prepare_chunks(file_name, pages, carry=300):
     """
     pages: list of (page_number, text).
     Returns ids, documents, metadatas ready for Chroma.
-    App aur eval dono yahi function use karenge.
+    The first chunk of each page also gets the last `carry` characters
+    of the previous page, so lists that cross a page break stay together.
     """
-    ids, documents, metadatas = [], [], []
     pages = remove_repeated_lines(pages)
+
+    ids, documents, metadatas = [], [], []
+    prev_page, prev_tail = None, ""
+
     for page_number, text in pages:
         if len(text) < 30:
+            prev_page, prev_tail = None, ""
             continue
 
         for chunk_number, chunk in enumerate(chunk_text(text)):
+            if chunk_number == 0 and prev_tail:
+                chunk = f"(continued from page {prev_page}) {prev_tail}\n{chunk}"
+
             ids.append(f"{file_name}-{page_number}-{chunk_number}")
             documents.append(chunk)
             metadatas.append({
                 "file": file_name,
                 "page": page_number
             })
+
+        prev_page, prev_tail = page_number, text[-carry:]
 
     return ids, documents, metadatas
 

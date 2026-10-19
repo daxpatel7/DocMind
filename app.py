@@ -13,6 +13,8 @@ from rag_core import (
 
 load_dotenv()
 
+CHROMA_PATH = "data/chroma"
+
 
 @st.cache_resource(show_spinner="Model is loading (first time may take time)...")
 def load_model():
@@ -20,13 +22,15 @@ def load_model():
 
 
 @st.cache_resource
+def get_client():
+    return chromadb.PersistentClient(path=CHROMA_PATH)
+
+
 def get_collection():
-    client = chromadb.Client()
-    return client.get_or_create_collection(
+    return get_client().get_or_create_collection(
         "docmind",
         metadata={"hnsw:space": "cosine"}
     )
-
 
 def generate_answer(question, retrieved_chunks):
     api_key = os.getenv("GROQ_API_KEY")
@@ -82,6 +86,21 @@ st.title("DocMind")
 
 col = get_collection()
 
+with st.sidebar:
+    st.header("Indexed files")
+    stored = col.get(include=["metadatas"])["metadatas"]
+    names = sorted({m["file"] for m in stored})
+
+    if names:
+        for n in names:
+            st.write(n)
+    else:
+        st.caption("Koi file index nahi hai")
+
+    if st.button("Clear index"):
+        get_client().delete_collection("docmind")
+        st.rerun()
+
 files = st.file_uploader(
     "PDF upload karo",
     type="pdf",
@@ -126,7 +145,7 @@ q = st.text_input("Ask Question")
 
 if q and col.count() > 0:
     model = load_model()
-    retrieved_chunks = retrieve(col, model, q, top_k=5)
+    retrieved_chunks = retrieve(col, model, q, top_k=8)
 
     try:
         with st.spinner("DocMind answer generate kar raha hai..."):
