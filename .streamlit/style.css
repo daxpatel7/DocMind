@@ -1,0 +1,91 @@
+
+/* DocMind — Soft Mint & Cloud */
+
+.stApp {
+    background: #F7FAF8;
+}
+
+[data-testid="stAppViewContainer"] {
+    background: #F7FAF8;
+}
+
+[data-testid="stHeader"] {
+    background: rgba(247, 250, 248, 0.92);
+}
+
+[data-testid="stSidebar"] {
+    background: #FFFFFF;
+    border-right: 1px solid #E4EEE8;
+}
+
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 2.5rem;
+}
+
+h1, h2, h3 {
+    color: #18352A;
+    letter-spacing: -0.025em;
+}
+
+p, label, .stCaption {
+    color: #52665B;
+}
+
+.stButton > button {
+    border-radius: 12px;
+    border: 1px solid #DCEAE1;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.stButton > button[kind="primary"] {
+    background: #236B4A;
+    border-color: #236B4A;
+    color: #FFFFFF;
+}
+
+.stButton > button:hover {
+    border-color: #82B99A;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background: #1B573B;
+    border-color: #1B573B;
+    color: #FFFFFF;
+}
+
+.stTextInput input,
+.stChatInput textarea,
+.stFileUploader section {
+    border-radius: 12px;
+}
+
+[data-testid="stChatMessage"] {
+    background: #FFFFFF;
+    border: 1px solid #E6EFE9;
+    border-radius: 16px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 2px 10px rgba(24, 53, 42, 0.035);
+}
+
+[data-testid="stMetric"] {
+    background: #FFFFFF;
+    border: 1px solid #E6EFE9;
+    border-radius: 12px;
+    padding: 0.75rem;
+}
+
+[data-testid="stExpander"] {
+    background: #FFFFFF;
+    border: 1px solid #E3ECE6;
+    border-radius: 12px;
+}
+
+[data-testid="stAlert"] {
+    border-radius: 12px;
+}
+
+hr {
+    border-color: #E4EEE8;
+}
