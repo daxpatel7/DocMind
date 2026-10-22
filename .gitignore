@@ -8,3 +8,4 @@ eval/results_*.txt
 groq_test.py
 rag_core_backup.py
 patch_app.py
+time_load.py
