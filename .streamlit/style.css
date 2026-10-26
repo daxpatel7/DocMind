@@ -1,57 +1,40 @@
-
-/* DocMind — Soft Mint & Cloud */
-
-.stApp {
-    background: #F7FAF8;
-}
-
-[data-testid="stAppViewContainer"] {
-    background: #F7FAF8;
-}
-
-[data-testid="stHeader"] {
-    background: rgba(247, 250, 248, 0.92);
-}
-
-[data-testid="stSidebar"] {
-    background: #FFFFFF;
-    border-right: 1px solid #E4EEE8;
-}
+/* DocMind — Soft Mint & Cloud
+   Colours (background, text, primary, borders) come from the
+   [theme.light] / [theme.dark] tables in config.toml, so this file must
+   not hard-code any colour that has to differ between themes. */
 
 .block-container {
-    padding-top: 2rem;
+    /* Must stay below the fixed header height (~3.75rem), otherwise the
+       page title is drawn underneath the header bar. */
+    padding-top: 4.5rem;
     padding-bottom: 2.5rem;
 }
 
 h1, h2, h3 {
-    color: #18352A;
     letter-spacing: -0.025em;
-}
-
-p, label, .stCaption {
-    color: #52665B;
 }
 
 .stButton > button {
     border-radius: 12px;
-    border: 1px solid #DCEAE1;
     transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .stButton > button[kind="primary"] {
-    background: #236B4A;
-    border-color: #236B4A;
     color: #FFFFFF;
 }
 
-.stButton > button:hover {
-    border-color: #82B99A;
+/* Disabled primary button: keep white text at full opacity (contrast is
+   computed on the primary colour) but drain the colour so it no longer
+   looks clickable. */
+.stButton > button[kind="primary"]:disabled,
+.stButton > button[kind="primary"]:disabled p {
+    color: #FFFFFF !important;
+    opacity: 1 !important;
 }
 
-.stButton > button[kind="primary"]:hover {
-    background: #1B573B;
-    border-color: #1B573B;
-    color: #FFFFFF;
+.stButton > button[kind="primary"]:disabled {
+    filter: saturate(0.2);
+    cursor: not-allowed;
 }
 
 .stTextInput input,
@@ -61,24 +44,20 @@ p, label, .stCaption {
 }
 
 [data-testid="stChatMessage"] {
-    background: #FFFFFF;
-    border: 1px solid #E6EFE9;
+    border: 1px solid rgba(128, 128, 128, 0.28);
     border-radius: 16px;
     padding: 1rem;
     margin-bottom: 0.75rem;
-    box-shadow: 0 2px 10px rgba(24, 53, 42, 0.035);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 [data-testid="stMetric"] {
-    background: #FFFFFF;
-    border: 1px solid #E6EFE9;
+    border: 1px solid rgba(128, 128, 128, 0.28);
     border-radius: 12px;
     padding: 0.75rem;
 }
 
 [data-testid="stExpander"] {
-    background: #FFFFFF;
-    border: 1px solid #E3ECE6;
     border-radius: 12px;
 }
 
@@ -87,5 +66,5 @@ p, label, .stCaption {
 }
 
 hr {
-    border-color: #E4EEE8;
+    border-color: rgba(128, 128, 128, 0.28);
 }

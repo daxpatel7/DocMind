@@ -1,11 +1,25 @@
-
 [theme]
-base = "light"
+font = "sans serif"
+showSidebarBorder = true
+
+[theme.light]
 primaryColor = "#236B4A"
 backgroundColor = "#F7FAF8"
 secondaryBackgroundColor = "#FFFFFF"
 textColor = "#18352A"
-font = "sans serif"
+linkColor = "#1B573B"
+borderColor = "#6E9780"
+showWidgetBorder = true
+
+[theme.dark]
+primaryColor = "#2A8558"
+backgroundColor = "#0E1A14"
+secondaryBackgroundColor = "#16261D"
+textColor = "#E4F1EA"
+linkColor = "#7FD6AB"
+borderColor = "#4F7360"
+showWidgetBorder = true
 
 [server]
 fileWatcherType = "none"
+maxUploadSize = 25
