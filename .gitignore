@@ -9,3 +9,6 @@ groq_test.py
 rag_core_backup.py
 patch_app.py
 time_load.py
+test_pdfs/
+make_test_pdfs.py
+send_to_claude/
