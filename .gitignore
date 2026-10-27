@@ -12,3 +12,4 @@ time_load.py
 test_pdfs/
 make_test_pdfs.py
 send_to_claude/
+patch_qa_hook.py
