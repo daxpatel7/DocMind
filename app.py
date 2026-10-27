@@ -26,7 +26,7 @@ from validation import(
 
 load_dotenv()
 
-CHROMA_PATH = "data/chroma"
+CHROMA_PATH = os.getenv("DOCMIND_CHROMA_PATH", "data/chroma")
 COLLECTION_NAME = "docmind"
 
 # Examples are deliberately short and relevant to course PDFs.
@@ -185,7 +185,7 @@ def index_uploaded_files(files, collection):
         report("info", "Choose one or more PDF files before indexing.")
         return
 
-    registry_path = Path("data") / "registry.json"
+    registry_path = Path(CHROMA_PATH).parent / "registry.json"
     registry = load_registry(str(registry_path))
     indexed_names = set(read_index_metadata(collection).keys())
 
@@ -497,7 +497,7 @@ with st.sidebar:
                     st.session_state.latest_chunks = []
                     st.session_state.pending_question = None
                     st.session_state.confirm_clear = False
-                    save_registry(str(Path("data") / "registry.json"), {})
+                    save_registry(str(Path(CHROMA_PATH).parent / "registry.json"), {})
                     st.session_state.validation_cache = {}
                     st.session_state.uploader_nonce += 1
                     st.session_state.index_report = []
