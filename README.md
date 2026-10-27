@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 # DocMind
 
@@ -10,6 +10,7 @@ If the documents do not contain the answer, DocMind says so instead of guessing.
 ![ChromaDB](https://img.shields.io/badge/Vector%20DB-ChromaDB-236B4A)
 ![Embeddings](https://img.shields.io/badge/Embeddings-bge--small--en--v1.5-lightgrey)
 ![LLM](https://img.shields.io/badge/LLM-Groq-F55036)
+![Tests](https://img.shields.io/badge/pytest-39%20tests-236B4A)
 
 A small retrieval-augmented generation (RAG) app, built to learn how retrieval quality is actually measured, and where it breaks.
 
@@ -19,7 +20,19 @@ A small retrieval-augmented generation (RAG) app, built to learn how retrieval q
 
 ## Contents
 
-[Screenshots](#screenshots) · [At a glance](#at-a-glance) · [Architecture](#architecture) · [How it works](#how-it-works) · [Evaluation](#evaluation) · [What the evals changed](#what-the-evals-changed) · [Known limitations](#known-limitations) · [Quick start](#quick-start) · [Project structure](#project-structure) · [Cost and speed](#cost-and-speed) · [Roadmap](#roadmap-not-built-yet)
+[Features](#features) · [Screenshots](#screenshots) · [At a glance](#at-a-glance) · [Architecture](#architecture) · [How it works](#how-it-works) · [PDF validation](#pdf-validation) · [Evaluation](#evaluation) · [What the evals changed](#what-the-evals-changed) · [Testing](#testing) · [Known limitations](#known-limitations) · [Quick start](#quick-start) · [Project structure](#project-structure) · [Cost and speed](#cost-and-speed) · [Roadmap](#roadmap-not-built-yet)
+
+---
+
+## Features
+
+- Answers from your own PDFs, with the **file and page** cited in the answer.
+- Replies "This information was not found in the uploaded document." when the answer is not there.
+- Several PDFs at once, indexed once and kept on disk between runs.
+- **Neighbour chunks**: lists that continue on the next page are not cut in half.
+- **PDF validation** before anything is parsed (see below), with a readable report per file.
+- Light and dark theme, token usage and response time for every answer, and a panel that shows exactly which chunks were sent to the model.
+- A retrieval evaluation harness that costs no LLM tokens.
 
 ---
 
@@ -27,11 +40,13 @@ A small retrieval-augmented generation (RAG) app, built to learn how retrieval q
 
 | Answer with a file and page citation | Refusal when the answer is not in the documents |
 |---|---|
-| ![Answer](docs/screenshots/01-answer.png) | ![Refusal](docs/screenshots/02-refusal.png) |
+| ![Answer](docs/screenshots/01-Answer.png) | ![Refusal](docs/screenshots/02-refusal.png) |
 
-![Chunks sent to the model, including a neighbour chunk](docs/screenshots/03-chunks.png)
+| Chunks sent to the model, with a neighbour chunk | Main page with the indexed documents |
+|---|---|
+| ![Chunks](docs/screenshots/03-chunks.png) | ![Main page](docs/screenshots/04-mainpage.png) |
 
-The right-hand panel shows the chunks that were sent to the model. These are not the same thing as the pages the model cites; the citation is inside the answer text.
+The right-hand panel shows the chunks that were sent to the model. They are not the same thing as the pages the model cites; the citation is inside the answer text.
 
 ---
 
@@ -44,8 +59,9 @@ The right-hand panel shows the chunks that were sent to the model. These are not
 | Lists that continue on the next page (5 questions) | every expected page retrieved in **4 of 5** (2 of 5 before neighbour chunks) |
 | Speed on an 8 GB RAM, Intel i3 laptop without a GPU | about **1 s** per question once the app is running, about 15 s for a normal start |
 | LLM tokens per question | about 1,500 to 2,300 |
+| Automated tests | **39** pytest tests for the validation module |
 
-These numbers come from question sets I wrote while looking at the PDFs, so expect lower scores on unseen questions. See [Evaluation](#evaluation).
+These retrieval numbers come from question sets I wrote while looking at the PDFs, so expect lower scores on unseen questions. See [Evaluation](#evaluation).
 
 ---
 
@@ -54,7 +70,9 @@ These numbers come from question sets I wrote while looking at the PDFs, so expe
 ```mermaid
 flowchart TB
     subgraph IDX["Indexing - once per PDF"]
-        A["PDF"] --> B["Parse pages with PyMuPDF"]
+        U["Upload"] --> V["Validate: size, header, active content, limits"]
+        V -- "rejected" --> X["Readable reason, nothing is parsed"]
+        V -- "passed" --> B["Parse pages with PyMuPDF"]
         B --> C["Remove repeated headers and footers"]
         C --> D["Chunk: 800 characters, 150 overlap"]
         D --> E["Embed with bge-small-en-v1.5"]
@@ -65,7 +83,8 @@ flowchart TB
         QE --> R["Top 8 chunks"]
         R --> N["Add the next chunk of the top 3 hits"]
         N --> L["Groq LLM, temperature 0"]
-        L --> OUT["Answer with file and page, or a not-found message"]
+        L --> S["Sanitise the answer"]
+        S --> OUT["Answer with file and page, or a not-found message"]
     end
     DB --> R
 ```
@@ -74,12 +93,13 @@ flowchart TB
 
 ## How it works
 
-1. **Parsing.** PyMuPDF reads each PDF page by page. Lines that repeat on at least half of the pages (headers, footers, page numbers) are removed. Pages without text trigger a warning, because there is no OCR.
-2. **Chunking.** Each page is cut into chunks of 800 characters with 150 overlap. The first chunk of a page also carries the last 300 characters of the previous page, so a list that crosses a page break stays together. Every chunk stores its file, its page, and the id of the next chunk (`next_id`).
-3. **Indexing.** Chunks are embedded locally with `BAAI/bge-small-en-v1.5` and stored in a persistent ChromaDB folder (`data/chroma`), so each PDF is indexed once.
-4. **Retrieval.** The question is embedded and the 8 closest chunks are taken. The next chunk of the 3 best hits is then appended after them as a *neighbour*. The ranking is not changed by this.
-5. **Answering.** The chunks go to a Groq-hosted model with the instruction to answer only from the context, cite the file and page, and otherwise reply "This information was not found in the uploaded document." Temperature is 0.
-6. **Interface.** Streamlit shows the answer, token usage, response time, and the chunks that were sent to the model, with neighbour chunks marked.
+1. **Validation.** Every upload is checked first (see [PDF validation](#pdf-validation)). Rejected files are never parsed.
+2. **Parsing.** PyMuPDF reads each PDF page by page. Lines that repeat on at least half of the pages (headers, footers, page numbers) are removed. Pages without text trigger a warning, because there is no OCR.
+3. **Chunking.** Each page is cut into chunks of 800 characters with 150 overlap. The first chunk of a page also carries the last 300 characters of the previous page. Every chunk stores its file, its page, and the id of the next chunk (`next_id`).
+4. **Indexing.** Chunks are embedded locally with `BAAI/bge-small-en-v1.5` and stored in a persistent ChromaDB folder (`data/chroma`), so each PDF is indexed once.
+5. **Retrieval.** The question is embedded and the 8 closest chunks are taken. The next chunk of the 3 best hits is appended after them as a *neighbour*. The ranking is not changed by this.
+6. **Answering.** The chunks go to a Groq-hosted model with the instruction to answer only from the context, cite the file and page, and otherwise reply "This information was not found in the uploaded document." Temperature is 0.
+7. **Display.** Markdown images and raw HTML tags are removed from the answer and links are made non-clickable before it is shown.
 
 **Why neighbour chunks:** a list that starts on one page and ends on the next can be cut in half by chunking.
 
@@ -92,9 +112,28 @@ flowchart LR
 
 ---
 
+## PDF validation
+
+`validation.py` (no Streamlit imports) runs before a file is parsed or indexed.
+
+| Check | What happens |
+|---|---|
+| File size | Over 25 MB is rejected (the browser upload limit is also set to 25 MB) |
+| Header | The file must contain `%PDF-` in its first 1,024 bytes; a missing `%%EOF` only gives a warning |
+| File name | Only a plain base name ending in `.pdf` is kept; path parts and odd characters are removed |
+| Structure | Checked in a **separate process with a 20 second timeout**, so a parser crash or hang cannot take the app down. Encrypted files, more than 300 pages, and files without readable text are rejected |
+| Active or embedded content | `/JavaScript`, `/JS`, `/Launch`, `/EmbeddedFile`, `/RichMedia`, `/XFA`, `/SubmitForm` and `/ImportData` are rejected. Names written in hex (`/J#61vaScript`) are caught too |
+| Prompt-injection phrases | Text such as "ignore previous instructions" gives a **warning**; the file is still treated as plain document text |
+| Duplicates | The same file (by SHA-256) is skipped; a different file with an existing name is rejected |
+| Antivirus (Windows only) | A best-effort Windows Defender scan; the result is shown as clean, threat found, or not available |
+
+**What this does not do.** It lowers risk; it does not prove that a file is free of malware. A bug in the PDF parser, a prompt-injection attack that gets past the phrase scan, and the fact that the text of your documents is sent to the Groq API are not removed by these checks. There is no login: everyone who uses one running instance shares one index.
+
+---
+
 ## Evaluation
 
-Two retrieval-only evals (no LLM calls, so they cost no tokens) run after every change:
+Two retrieval-only evals (no LLM calls, so they cost no tokens) were run after every retrieval change:
 
 ```powershell
 python eval/run_eval.py path\to\one.pdf
@@ -171,16 +210,34 @@ No single number separates these groups, so refusing is left to the LLM instruct
 
 ---
 
+## Testing
+
+| What | Result |
+|---|---|
+| `python -m pytest -q` (validation module: limits, encrypted, JavaScript, hex-escaped names, embedded files, duplicates, filename cleaning, answer sanitiser, timeouts) | 39 passed |
+| Retrieval evals (one PDF and three PDFs) | see [Evaluation](#evaluation) |
+| Hand-run questions with the real LLM on three PDFs | definitions, lists, tables and refusals checked; small sample |
+| Live upload check with synthetic files | files with JavaScript, an embedded file, encryption, no text, or a renamed text file were rejected with a readable reason; an identical copy was reported as already indexed; valid files were indexed |
+| Automated browser run (first use and upload limits) | empty state and the disabled Index button, upload and indexing messages, document card; a 26 MB file was blocked in the browser and a 301-page file was rejected with a readable message; a synthetic 120-page file was indexed in 4.2 s |
+
+The other scenarios planned for that browser run (question accuracy through the UI, Hinglish, prompt injection, error states, layout checks at several screen sizes) were **not run**. Run the tests with `pip install -r requirements-dev.txt` and `python -m pytest -q`.
+
+---
+
 ## Known limitations
 
 - **Definitions two chunks away.** A question about model-compression techniques returns all 5 technique names but no definitions for the last two, because that chunk is two hops from the retrieved ones.
 - **Rare acronyms.** "What is LoRA?" needed top 8 to find the right chunk (it ranked 6th). There is no keyword or hybrid search.
 - **Noise from quiz pages.** Multiple-choice pages sometimes appear among the top results.
 - **A cited page can be wrong**, for example for text carried over from the previous page. Citations are not checked automatically.
+- **Repeated lines are removed.** Lines that appear on at least half of a document's pages are treated as headers or footers. In a very repetitive document most pages can disappear: a synthetic 120-page file with identical filler produced only 3 chunks.
+- **The document card counts pages that produced chunks**, which can be fewer than the real page count.
 - **Answers are in English** even when the question is in Hinglish; the prompt has no language rule.
 - **No chat memory.** Every question is answered independently.
 - **No OCR.** Scanned PDFs give no text; the app shows a warning.
 - **English embedding model**, and PDFs only.
+- **No login and one shared index.** The text of your documents is sent to the Groq API; do not upload private files.
+- **The antivirus scan only exists on Windows**, and "clean" only means that scanner found nothing.
 - **Test data.** Evals use three course PDFs (25, 28 and 32 pages) that are not included here. The question files are tied to them.
 - **Slow first start.** On my laptop the first start after boot took between 90 and 290 seconds (model load); later starts took about 15 seconds.
 
@@ -201,10 +258,11 @@ streamlit run app.py
 On macOS or Linux use `source .venv/bin/activate` and `cp .env.example .env`.
 
 1. Edit `.env` and set `GROQ_API_KEY` and `LLM_MODEL` (tested with `qwen/qwen3.8-27b`). The key is never committed.
-2. The first run downloads the embedding model (about 130 MB) from Hugging Face. After that it also works offline.
+2. The first run downloads the embedding model (about 130 MB) from Hugging Face, once per machine. After that it also works offline.
 3. Upload PDFs in the sidebar and press **Index PDFs**. The index is saved in `data/chroma`.
 4. After changing chunking or the embedding model, press **Clear index** and index the PDFs again.
-5. The Streamlit file watcher is switched off in `.streamlit/config.toml`, so restart the app after code changes.
+5. To keep test data apart from your real index, start the app with `DOCMIND_CHROMA_PATH` set to another folder.
+6. The Streamlit file watcher is switched off in `.streamlit/config.toml`, so restart the app after code changes.
 
 ---
 
@@ -217,6 +275,8 @@ On macOS or Linux use `source .venv/bin/activate` and `cp .env.example .env`.
 DocMind/
 ├── app.py                  Streamlit UI and answer generation
 ├── rag_core.py             parsing, chunking, retrieval (no Streamlit imports)
+├── validation.py           PDF validation, answer sanitiser, duplicate handling
+├── tests/                  pytest tests for validation.py
 ├── eval/
 │   ├── questions.json          one-PDF question set
 │   ├── questions_multi.json    three-PDF question set
@@ -225,10 +285,9 @@ DocMind/
 ├── debug_index.py          inspect what the saved index returns for a question
 ├── debug_query.py          same, but builds a temporary index from PDFs
 ├── test_neighbors.py       shows neighbour chunks for a question
-├── .streamlit/             theme and Streamlit settings
+├── .streamlit/             theme, upload limit and Streamlit settings
 ├── docs/screenshots/       images used in this README
-├── requirements.txt
-└── .env.example
+├── pytest.ini, requirements.txt, requirements-dev.txt, .env.example
 ```
 
 </details>
@@ -253,10 +312,10 @@ DocMind/
 - Keyword plus vector (hybrid) search for acronyms
 - A check that warns when the cited page was not among the retrieved chunks
 - The answer in the language of the question
-- Search inside one chosen document
+- Search inside one chosen document, and deleting a single document
+- A login and a separate index for every user, then hosting
 - A reranker, after measuring its memory cost on a small laptop
 - OCR and DOCX support
-- An API layer, so the interface can be swapped
 
 ---
 
