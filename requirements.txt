@@ -1,6 +1,6 @@
 pymupdf
 chromadb
 sentence-transformers
-streamlit
+streamlit==1.65.0
 groq
 python-dotenv
